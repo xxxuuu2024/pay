@@ -1,38 +1,93 @@
 package alipay
 
 import (
-	"crypto"
+	"io/ioutil"
 	"net/http"
+	"pay/common"
 	"time"
 )
 
-const (
-	gateway = "https://openapi.alipay.com/gateway.do"
-)
-
-type Config struct {
-	AppID    string      `json:"app_id"`
-	SignType crypto.Hash `json:"sign_type"`
-	//私钥路径
-	PrivateKey []byte `json:"private_key"`
+type AlipayTrade struct {
+	request *Request
 }
-type Alipay struct {
-	Config
-	client *http.Client
-	*commonReqParam
+type AlipayConf struct {
+	AppID            string
+	SignType         string
+	PriveKeyPath     string
+	Gateway          string
+	AlipayPubKeyPath string
 }
 
-func New(config Config) Alipay {
-	return Alipay{
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-		commonReqParam: &commonReqParam{
-			AppID: config.AppID,
-			//SignType: "RSA2",
-			Format:  "json",
-			Version: "1.0",
-			Charset: "utf-8",
-		},
+func New(conf AlipayConf) *AlipayTrade {
+
+	switch conf.SignType {
+	case "RSA2", "RSA":
+	default:
+		panic("not found " + conf.SignType)
 	}
+	rsaKey, err := common.PrivateKeyDecode(conf.PriveKeyPath)
+	if err != nil {
+		panic(err)
+	}
+	rsaPubKey, err := common.PubKeyDecode(conf.AlipayPubKeyPath)
+	if err != nil {
+		panic(err)
+	}
+	req := Request{
+		client: &http.Client{
+			Timeout: time.Second * 60,
+		},
+		privateKey: rsaKey,
+		pubKey:     rsaPubKey,
+	}
+	req.commonParams.AppID = conf.AppID
+	req.commonParams.SignType = conf.SignType
+	req.commonParams.Format = "json"
+	req.commonParams.Version = "1.0"
+	req.commonParams.Charset = "utf-8"
+	return &AlipayTrade{
+		request: &req,
+	}
+}
+
+func (trade *AlipayTrade) CreatePreTradeRequest(input CreateTradeInput) (CreatePreTradeOutPut, error) {
+
+	resp, err := trade.tradeReq(input, aliTradeCreate)
+	if err != nil {
+		return CreatePreTradeOutPut{}, err
+	}
+	var output CreatePreTradeOutPut
+	err = resp.handle(&output)
+	if err != nil {
+		return CreatePreTradeOutPut{}, err
+	}
+	output.commonResponse = resp
+	return output, nil
+}
+func (trade *AlipayTrade) CancelTradeReq(input CancelTradeInput) (CancelTradeOutInput, error) {
+	resp, err := trade.tradeReq(input, aliTradeCancel)
+	if err != nil {
+		return CancelTradeOutInput{}, err
+	}
+	var output CancelTradeOutInput
+	err = resp.handle(&output)
+	if err != nil {
+		return CancelTradeOutInput{}, err
+	}
+	output.commonResponse = resp
+	return output, nil
+
+}
+
+func (trade *AlipayTrade) tradeReq(param interface{}, method string) (*commonResponse, error) {
+	resp, err := trade.request.createRequest(param, method)
+	if err != nil {
+		return nil, err
+	}
+	bodyByte, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	return &commonResponse{
+		Response: resp,
+		RespByte: bodyByte,
+	}, nil
 }

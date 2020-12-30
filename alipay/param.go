@@ -1,7 +1,10 @@
 package alipay
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"pay/common"
 	"time"
 )
 
@@ -10,23 +13,29 @@ const (
 	aliAppPay = "alipay.trade.app.pay"
 	//h5支付
 	aliH5Pay = "alipay.trade.wap.pay"
-	//交易创建
-	aliTradeCreate = "alipay.trade.create"
+	//交易预创建
+	aliTradeCreate = "alipay.trade.precreate"
 	//订单查询
 	aliTradeQuery = "alipay.trade.query"
-	//关闭订单
+	//统一收单交易撤销接口
 	aliTradeCancel = "alipay.trade.cancel"
 	//交易退款接口
 	aliTradeRefund = "alipay.trade.refund"
 )
 
-type commonResponse struct {
-	http.Response
+// code="10000" 即处理成功
+type commonParam struct {
 	Code    string `json:"code"`
 	Msg     string `json:"msg"`
 	SubCode string `json:"sub_code,omitempty"`
 	SubMsg  string `json:"sub_msg,omitempty"`
 	Sign    string `json:"sign"`
+}
+
+type commonResponse struct {
+	*http.Response
+
+	RespByte []byte
 }
 
 //交易创建
@@ -48,7 +57,7 @@ type GoodsDetails struct {
 	//商品展示地址
 	ShowUrl string `json:"show_url"`
 }
-type CreateTradeRequest struct {
+type CreateTradeInput struct {
 	//required 商户订单号
 	OutTradeNo string `json:"out_trade_no"`
 	//卖家支付宝用户ID
@@ -72,12 +81,20 @@ type CreateTradeRequest struct {
 	// 订单包含的商品列表信息
 	GoodsDetails []GoodsDetails `json:"goods_details"`
 }
-type CreateTradeResponse struct {
-	commonResponse
+type CreatePreTradeResponse struct {
+}
+type businessState struct {
+	SubCode string `json:"sub_code"`
+	Code    string `json:"code,omitempty"`
+	SubMsg  string `json:"sub_msg,omitempty"`
+	*commonResponse
+}
+type CreatePreTradeOutPut struct {
+	businessState
 	//商户订单号
 	OutTradeNo string `json:"out_trade_no"`
-	//支付宝交易号
-	TradeNo string `json:"trade_no"`
+	//二维码信息
+	QrCode string `json:"qr_code"`
 }
 
 //订单查询
@@ -186,7 +203,16 @@ type CreateRefundRequest struct {
 }
 
 //关闭订单
-type CancelTradeRequest struct {
+type CancelTradeInput struct {
+	TradeNo    string `json:"trade_no"`
+	OutTradeNo string `json:"out_trade_no"`
+	OperatorID string `json:"operator_id"`
+}
+type CancelTradeOutInput struct {
+	businessState
+	TradeNo    string `json:"trade_no"`
+	OutTradeNo string `json:"out_trade_no"`
+	OperatorID string `json:"operator_id"`
 }
 
 //type AliPay interface {
@@ -199,3 +225,22 @@ type CancelTradeRequest struct {
 //	//订单查询
 //	CancelTrade()
 //}
+func (resp *commonResponse) handle(data interface{}) error {
+
+	formatMap := make(map[string]interface{}, 2)
+	err := json.Unmarshal(resp.RespByte, &formatMap)
+	if err != nil {
+		return common.ErrMsg(fmt.Sprintf("commonResponse|handle|%s", err))
+	}
+	for _, val := range formatMap {
+		switch val.(type) {
+		case map[string]interface{}:
+			//判断为提取参数
+			valByte, _ := json.Marshal(val)
+			return json.Unmarshal(valByte, &data)
+		default:
+		}
+	}
+
+	return common.ErrMsg(fmt.Sprintf("commonResponse|handle|%v", formatMap))
+}

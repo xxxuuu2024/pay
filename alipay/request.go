@@ -1,26 +1,25 @@
 package alipay
 
 import (
-	"crypto"
 	"crypto/rsa"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
-	"hash"
+	"fmt"
 	"net/http"
+	"net/url"
 	"pay/common"
 	"time"
 )
 
-type commonReqParam struct {
-	AppID   string `json:"app_id"`
-	Method  string `json:"method"`
-	Format  string `json:"format"`
-	Charset string `json:"charset"`
-	//SignType string `json:"sign_type"`
+const (
+	//gateway="https://openapi.alipay.com/gateway.do"
+	gateway = "https://openapi.alipaydev.com/gateway.do"
+)
+
+type commonParams struct {
+	AppID        string `json:"app_id"`
+	Method       string `json:"method"`
+	Format       string `json:"format"`
+	Charset      string `json:"charset"`
 	Sign         string `json:"sign"`
 	Timestamp    string `json:"timestamp"`
 	Version      string `json:"version"`
@@ -28,70 +27,84 @@ type commonReqParam struct {
 	BizContent   string `json:"biz_content"`
 	NotifyUrl    string `json:"notify_url"`
 	ReturnUrl    string `json:"return_url"`
+	SignType     string `json:"sign_type"`
 }
 
-//数据组装
-func (alipay *Alipay) assemble() {
-
+type Request struct {
+	commonParams
+	client     *http.Client
+	privateKey *rsa.PrivateKey
+	pubKey     *rsa.PublicKey
 }
 
 //参数签名
-func (alipay *Alipay) sign(param []byte) (string, error) {
-	block, _ := pem.Decode(alipay.PrivateKey)
-	if block == nil {
-		return "", common.ErrMsg("pem decode error")
+func (req *Request) sign(param []byte) (string, error) {
+
+	if req.SignType == "RSA2" {
+
+		return common.SHA256Sign(param, req.privateKey)
+
 	}
-	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
-	if err != nil {
-		return "", err
-	}
-	//var h
-	var h hash.Hash
-	if alipay.SignType == crypto.SHA256 {
-		//采用RSA256
-		h = sha256.New()
-		h.Write(param)
-	} else {
-		//默认采用RSA1签名方式
-		h = sha1.New()
-		h.Write(param)
-	}
-	digest := h.Sum(nil)
-	s, err := rsa.SignPKCS1v15(nil, privateKey, alipay.SignType, digest)
-	if err != nil {
-		return "", err
-	}
-	data := base64.StdEncoding.EncodeToString(s)
-	return data, nil
+
+	return common.SHASign(param, req.privateKey)
 }
 
-func (alipay *Alipay) handleRequest(params interface{}) (*http.Response, error) {
+//签名验证
+
+func (req *Request) verifySign(param []byte, sign string) (bool, error) {
+	//map
+	respParam := make(map[string]string, 2)
+	if err := json.Unmarshal(param, &respParam); err != nil {
+		return false, err
+	}
+	delete(respParam, "sign")
+	//delete(respParam,"sign_type")
+	asciiStr, _ := json.Marshal(respParam)
+	_, sortStr, err := common.AsciiSort(asciiStr)
+	if err != nil {
+		return false, err
+	}
+	signstr, err := req.sign([]byte(sortStr))
+	if err != nil {
+		return false, err
+	}
+	if sign == signstr {
+		return true, nil
+	}
+
+	return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
+
+}
+
+func (req *Request) createRequest(params interface{}, method string) (*http.Response, error) {
 	//构建request请求
 	content, err := json.Marshal(params)
 	if err != nil {
 		return nil, common.ErrMsg("handleRequest|Marshal")
 	}
-	alipay.commonReqParam.BizContent = string(content)
-	alipay.Timestamp = time.Now().Format("2006-01-02 15:04:05")
+	req.commonParams.BizContent = string(content)
+	req.commonParams.Timestamp = time.Now().Format("2006-01-02 15:04:05")
+	req.commonParams.Method = method
 	//asicc排序
-	req, _ := json.Marshal(alipay.commonReqParam)
-	arr, sortStr, err := common.AsciiSort(req)
+	data, _ := json.Marshal(req.commonParams)
+	arr, sortStr, err := common.AsciiSort(data)
 	if err != nil {
 		return nil, err
 	}
 	//签名
-	signParam, err := alipay.sign([]byte(sortStr))
+	signParam, err := req.sign([]byte(sortStr))
 	if err != nil {
 		return nil, err
 	}
-	alipay.Sign = signParam
-	request, err := http.NewRequest(http.MethodPost, gateway, nil)
+	req.Sign = signParam
+	arr["sign"] = req.Sign
+	requestUrl := url.Values{}
+	for k, v := range arr {
+		requestUrl.Add(k, v)
+	}
+	request, err := http.NewRequest(http.MethodGet, gateway+"?"+requestUrl.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
-	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	for key, value := range arr {
-		request.Form.Add(key, value)
-	}
-	return alipay.client.Do(request)
+	return req.client.Do(request)
 }
