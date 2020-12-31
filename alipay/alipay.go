@@ -97,6 +97,20 @@ func (trade *AlipayTrade) TradePagePayReq(input TradePagePayInput) (TradePagePay
 	return TradePagePayOutInput{PayUrl: uri}, nil
 
 }
+func (trade *AlipayTrade) TradeRefund(input RefundInput) (RefundOutInput, error) {
+
+	resp, err := trade.tradeReq(input, "alipay.trade.refund")
+	if err != nil {
+		return RefundOutInput{}, err
+	}
+	var output RefundOutInput
+	err = resp.handle(&output)
+	if err != nil {
+		return RefundOutInput{}, err
+	}
+	output.commonResponse = resp
+	return output, nil
+}
 
 //异步通知处理
 func (trade *AlipayTrade) TradeNotify(req []byte) (Notification, error) {

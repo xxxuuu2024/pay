@@ -212,7 +212,26 @@ type GetPayRequest struct {
 }
 
 //发起退款
-type CreateRefundRequest struct {
+type RefundInput struct {
+	OutTradeNo   string `json:"out_trade_no"`
+	TradeNo      string `json:"trade_no"`
+	RefundAmount string `json:"refund_amount"`
+	ReFundReason string `json:"re_fund_reason"`
+	OperatorID   string `json:"operator_id"`
+	StoreID      string `json:"store_id"`
+	//交易币种
+	RefundCurrency string `json:"refund_currency"`
+	//部分退款 该参数必传
+	OutRequestNo string `json:"out_request_no"`
+}
+type RefundOutInput struct {
+	businessState
+	OutTradeNo   string `json:"out_trade_no"`
+	TradeNo      string `json:"trade_no"`
+	BuyerLogonID string `json:"buyer_logon_id"`
+	FundChange   string `json:"fund_change"`
+	RefundFee    string `json:"refund_fee"`
+	StoreName    string `json:"store_name"`
 }
 
 //关闭订单
