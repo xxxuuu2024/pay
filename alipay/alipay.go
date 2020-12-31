@@ -25,7 +25,9 @@ type AlipayConf struct {
 func New(conf AlipayConf) *AlipayTrade {
 
 	switch conf.SignType {
-	case "RSA2", "RSA":
+	case "RSA2":
+	case "RSA":
+		panic("RSA is not supported because it is not secure")
 	default:
 		panic("not found " + conf.SignType)
 	}
