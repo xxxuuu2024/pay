@@ -17,6 +17,7 @@ func init() {
 		AlipayPubKeyPath: "/Users/x/Downloads/app_public_key.csr",  //支付宝公钥
 		SignType:         "RSA2",
 	})
+
 }
 
 func TestCreatePay(t *testing.T) {
@@ -31,7 +32,7 @@ func TestCreatePay(t *testing.T) {
 		t.Log(err)
 		return
 	}
-	t.Log(string(output.RespByte))
+	t.Log(output)
 
 }
 
@@ -54,10 +55,19 @@ func TestSignVerfy(t *testing.T) {
 
 }
 
-//
-func TestDemo(t *testing.T) {
-	var totalPrice uint32 = 500
-	const couponPrice = 550
+func TestPayUrl(t *testing.T) {
+	outOrder := fmt.Sprint(time.Now().UnixNano())
+	output, err := trade.TradePagePayReq(
+		alipay.TradePagePayInput{
+			ProductCode: "FAST_INSTANT_TRADE_PAY",
+			OutTradeNo:  outOrder,
+			TotalAmount: "26.09",
+			Subject:     "测试demo",
+		})
+	if err != nil {
+		t.Log(err)
+		return
+	}
+	t.Log(output)
 
-	fmt.Println("用户需要支付金额: ", totalPrice)
 }

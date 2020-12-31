@@ -79,6 +79,17 @@ func (trade *AlipayTrade) CancelTradeReq(input CancelTradeInput) (CancelTradeOut
 
 }
 
+func (trade *AlipayTrade) TradePagePayReq(input TradePagePayInput) (TradePagePayOutInput, error) {
+
+	uri, err := trade.request.assemble(input, "alipay.trade.page.pay")
+	if err != nil {
+		return TradePagePayOutInput{}, err
+	}
+
+	return TradePagePayOutInput{PayUrl: uri}, nil
+
+}
+
 func (trade *AlipayTrade) tradeReq(param interface{}, method string) (*commonResponse, error) {
 	resp, err := trade.request.createRequest(param, method)
 	if err != nil {

@@ -15,6 +15,8 @@ const (
 	aliH5Pay = "alipay.trade.wap.pay"
 	//交易预创建
 	aliTradeCreate = "alipay.trade.precreate"
+	//统一收单下单返回支付页面
+	pagePay = "alipay.trade.page.pay"
 	//订单查询
 	aliTradeQuery = "alipay.trade.query"
 	//统一收单交易撤销接口
@@ -34,7 +36,6 @@ type commonParam struct {
 
 type commonResponse struct {
 	*http.Response
-
 	RespByte []byte
 	Sign     string
 }
@@ -214,6 +215,24 @@ type CancelTradeOutInput struct {
 	TradeNo    string `json:"trade_no"`
 	OutTradeNo string `json:"out_trade_no"`
 	OperatorID string `json:"operator_id"`
+}
+
+//统一下单返回支付url
+type TradePagePayInput struct {
+	OutTradeNo  string `json:"out_trade_no"`
+	ProductCode string `json:"product_code"`
+	TotalAmount string `json:"total_amount"`
+	Subject     string `json:"subject"`
+}
+
+type TradePagePayOutInput struct {
+	businessState
+	PayUrl string `json:"pay_url"`
+	//TradeNo string `json:"trade_no"`
+	//OutTradeNo string `json:"out_trade_no"`
+	//SellerID string `json:"seller_id"`
+	//TotalAmount string `json:"total_amount"`
+	//MerchantOrderNo string `json:"merchant_order_no"`
 }
 
 //type AliPay interface {

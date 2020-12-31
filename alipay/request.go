@@ -76,14 +76,12 @@ func (req *Request) verifySign(param []byte, sign string) (bool, error) {
 	//}
 	//
 	//return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
-
 }
 
-func (req *Request) createRequest(params interface{}, method string) (*http.Response, error) {
-	//构建request请求
+func (req *Request) assemble(params interface{}, method string) (string, error) {
 	content, err := json.Marshal(params)
 	if err != nil {
-		return nil, common.ErrMsg("handleRequest|Marshal")
+		return "", common.ErrMsg("handleRequest|Marshal")
 	}
 	req.commonParams.BizContent = string(content)
 	req.commonParams.Timestamp = time.Now().Format("2006-01-02 15:04:05")
@@ -92,12 +90,12 @@ func (req *Request) createRequest(params interface{}, method string) (*http.Resp
 	data, _ := json.Marshal(req.commonParams)
 	arr, sortStr, err := common.AsciiSort(data)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	//签名
 	signParam, err := req.sign([]byte(sortStr))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	req.Sign = signParam
 	arr["sign"] = req.Sign
@@ -105,7 +103,17 @@ func (req *Request) createRequest(params interface{}, method string) (*http.Resp
 	for k, v := range arr {
 		requestUrl.Add(k, v)
 	}
-	request, err := http.NewRequest(http.MethodGet, gateway+"?"+requestUrl.Encode(), nil)
+	return gateway + "?" + requestUrl.Encode(), nil
+
+}
+
+func (req *Request) createRequest(params interface{}, method string) (*http.Response, error) {
+	//构建request请求
+	reqUrl, err := req.assemble(params, method)
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequest(http.MethodGet, reqUrl, nil)
 	if err != nil {
 		return nil, err
 	}
