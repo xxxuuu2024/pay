@@ -36,6 +36,7 @@ type commonResponse struct {
 	*http.Response
 
 	RespByte []byte
+	Sign     string
 }
 
 //交易创建

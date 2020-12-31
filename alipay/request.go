@@ -3,7 +3,6 @@ package alipay
 import (
 	"crypto/rsa"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 	"pay/common"
@@ -53,26 +52,30 @@ func (req *Request) sign(param []byte) (string, error) {
 
 func (req *Request) verifySign(param []byte, sign string) (bool, error) {
 	//map
-	respParam := make(map[string]string, 2)
-	if err := json.Unmarshal(param, &respParam); err != nil {
-		return false, err
-	}
-	delete(respParam, "sign")
-	//delete(respParam,"sign_type")
-	asciiStr, _ := json.Marshal(respParam)
+	asciiStr, _ := json.Marshal(param)
 	_, sortStr, err := common.AsciiSort(asciiStr)
 	if err != nil {
 		return false, err
 	}
-	signstr, err := req.sign([]byte(sortStr))
-	if err != nil {
-		return false, err
-	}
-	if sign == signstr {
-		return true, nil
-	}
+	return common.SHA256SignVerify([]byte(sortStr), req.pubKey, sign)
 
-	return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
+	//asciiStr, _ := json.Marshal(respParam[method])
+	//_, sortStr, err := common.AsciiSort(asciiStr)
+	//if err != nil {
+	//	return false, err
+	//}
+	////if req.SignType == "RSA2" {
+	//return common.SHA256SignVerify([]byte(sortStr), req.pubKey,sign)
+	//}
+	//signstr, err := req.sign([]byte(sortStr))
+	//if err != nil {
+	//	return false, err
+	//}
+	//if sign == signstr {
+	//	return true, nil
+	//}
+	//
+	//return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
 
 }
 
