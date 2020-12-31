@@ -50,33 +50,33 @@ func (req *Request) sign(param []byte) (string, error) {
 
 //签名验证
 
-func (req *Request) verifySign(param []byte, sign string) (bool, error) {
-	//map
-	asciiStr, _ := json.Marshal(param)
-	_, sortStr, err := common.AsciiSort(asciiStr)
-	if err != nil {
-		return false, err
-	}
-	return common.SHA256SignVerify([]byte(sortStr), req.pubKey, sign)
-
-	//asciiStr, _ := json.Marshal(respParam[method])
-	//_, sortStr, err := common.AsciiSort(asciiStr)
-	//if err != nil {
-	//	return false, err
-	//}
-	////if req.SignType == "RSA2" {
-	//return common.SHA256SignVerify([]byte(sortStr), req.pubKey,sign)
-	//}
-	//signstr, err := req.sign([]byte(sortStr))
-	//if err != nil {
-	//	return false, err
-	//}
-	//if sign == signstr {
-	//	return true, nil
-	//}
-	//
-	//return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
-}
+//func (req *Request) verifySign(param []byte, sign string) (bool, error) {
+//	//map
+//	asciiStr, _ := json.Marshal(param)
+//	_, sortStr, err := common.AsciiSort(asciiStr)
+//	if err != nil {
+//		return false, err
+//	}
+//	return common.SHA256SignVerify([]byte(sortStr), req.pubKey, sign)
+//
+//	//asciiStr, _ := json.Marshal(respParam[method])
+//	//_, sortStr, err := common.AsciiSort(asciiStr)
+//	//if err != nil {
+//	//	return false, err
+//	//}
+//	////if req.SignType == "RSA2" {
+//	//return common.SHA256SignVerify([]byte(sortStr), req.pubKey,sign)
+//	//}
+//	//signstr, err := req.sign([]byte(sortStr))
+//	//if err != nil {
+//	//	return false, err
+//	//}
+//	//if sign == signstr {
+//	//	return true, nil
+//	//}
+//	//
+//	//return false, common.ErrMsg(fmt.Sprintf("alipay:%s,self:%s", sign, signstr))
+//}
 
 func (req *Request) assemble(params interface{}, method string) (string, error) {
 	content, err := json.Marshal(params)

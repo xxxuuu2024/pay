@@ -81,16 +81,19 @@ func SHA256Sign(param []byte, key *rsa.PrivateKey) (string, error) {
 	data := base64.StdEncoding.EncodeToString(s)
 	return data, nil
 }
-func SHA256SignVerify(param []byte, key *rsa.PublicKey, sign string) (bool, error) {
+func SHA256SignVerify(param []byte, key *rsa.PublicKey, sign string) error {
 	h := sha256.New()
 	h.Write(param)
 	digest := h.Sum(nil)
-	decodeSign, _ := base64.StdEncoding.DecodeString(sign)
-	err := rsa.VerifyPKCS1v15(key, crypto.SHA256, digest, decodeSign)
+	decodeSign, err := base64.StdEncoding.DecodeString(sign)
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	err = rsa.VerifyPKCS1v15(key, crypto.SHA256, digest, decodeSign)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func SHASign(param []byte, key *rsa.PrivateKey) (string, error) {

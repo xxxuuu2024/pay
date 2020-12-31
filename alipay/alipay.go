@@ -1,8 +1,10 @@
 package alipay
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"pay/common"
 	"time"
 )
@@ -16,6 +18,8 @@ type AlipayConf struct {
 	PriveKeyPath     string
 	Gateway          string
 	AlipayPubKeyPath string
+	NotifyUrl        string
+	CallBackUrl      string
 }
 
 func New(conf AlipayConf) *AlipayTrade {
@@ -45,6 +49,8 @@ func New(conf AlipayConf) *AlipayTrade {
 	req.commonParams.Format = "json"
 	req.commonParams.Version = "1.0"
 	req.commonParams.Charset = "utf-8"
+	req.commonParams.NotifyUrl = conf.NotifyUrl
+	req.commonParams.ReturnUrl = conf.CallBackUrl
 	return &AlipayTrade{
 		request: &req,
 	}
@@ -88,6 +94,35 @@ func (trade *AlipayTrade) TradePagePayReq(input TradePagePayInput) (TradePagePay
 
 	return TradePagePayOutInput{PayUrl: uri}, nil
 
+}
+
+//异步通知处理
+func (trade *AlipayTrade) TradeNotify(req []byte) (Notification, error) {
+	urlVal, err := url.ParseQuery(string(req))
+	if err != nil {
+		return Notification{}, err
+	}
+	result := make(map[string]interface{}, 2)
+	for key, _ := range urlVal {
+		result[key] = urlVal.Get(key)
+	}
+	sign := result["sign"].(string)
+	delete(result, "sign")
+	delete(result, "sign_type")
+	notifyByte, _ := json.Marshal(result)
+	_, wsign, err := common.AsciiSort(notifyByte)
+	if err != nil {
+		return Notification{}, err
+	}
+	err = common.SHA256SignVerify([]byte(wsign), trade.request.pubKey, sign)
+	if err != nil {
+		return Notification{}, err
+	}
+	var notifyMsg Notification
+	if err = json.Unmarshal(notifyByte, &notifyMsg); err != nil {
+		return Notification{}, err
+	}
+	return notifyMsg, nil
 }
 
 func (trade *AlipayTrade) tradeReq(param interface{}, method string) (*commonResponse, error) {

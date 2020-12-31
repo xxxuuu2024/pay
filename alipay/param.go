@@ -40,6 +40,17 @@ type commonResponse struct {
 	Sign     string
 }
 
+type Notification struct {
+	AppID          string `json:"app_id"`
+	AuthAppID      string `json:"auth_app_id"`
+	BuyerID        string `json:"buyer_id"`
+	BuyerPayAmount string `json:"buyer_pay_amount"`
+	FundBillList   string `json:"fund_bill_list"`
+	OutTradeNo     string `json:"out_trade_no"`
+	PointAmount    string `json:"point_amount"`
+	TradeNo        string `json:"trade_no"`
+}
+
 //交易创建
 type GoodsDetails struct {
 	// required 商品的编号
@@ -219,10 +230,14 @@ type CancelTradeOutInput struct {
 
 //统一下单返回支付url
 type TradePagePayInput struct {
-	OutTradeNo  string `json:"out_trade_no"`
+	// *required
+	OutTradeNo string `json:"out_trade_no"`
+	// *required
 	ProductCode string `json:"product_code"`
+	// *required
 	TotalAmount string `json:"total_amount"`
-	Subject     string `json:"subject"`
+	// *required
+	Subject string `json:"subject"`
 }
 
 type TradePagePayOutInput struct {
